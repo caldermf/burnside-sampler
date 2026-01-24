@@ -114,23 +114,70 @@ def jordan_form(A: np.ndarray, p: int) -> Tuple[np.ndarray, np.ndarray, Tuple[in
     return J, P, partition
 
 
+def _kernel_basis(M: np.ndarray, p: int) -> List[np.ndarray]:
+    """Find basis for kernel of M over F_p."""
+    M = M.copy() % p
+    m, n = M.shape
+    pivot_cols = []
+    row = 0
+    
+    for col in range(n):
+        pivot = next((r for r in range(row, m) if M[r, col] % p), None)
+        if pivot is None:
+            continue
+        M[[row, pivot]] = M[[pivot, row]]
+        M[row] = M[row] * mod_inv(int(M[row, col]), p) % p
+        for r in range(m):
+            if r != row and M[r, col]:
+                M[r] = (M[r] - int(M[r, col]) * M[row]) % p
+        pivot_cols.append(col)
+        row += 1
+    
+    # Free variables give kernel basis
+    free_cols = [c for c in range(n) if c not in pivot_cols]
+    basis = []
+    for fc in free_cols:
+        v = np.zeros(n, dtype=int)
+        v[fc] = 1
+        for i, pc in enumerate(pivot_cols):
+            v[pc] = (-int(M[i, fc])) % p
+        basis.append(v)
+    return basis
+
+
 def _find_cyclic(N, N_pows, k, used, p, n):
     """Find v with N^{k-1}v ≠ 0, N^k v = 0, independent of used."""
-    for _ in range(200):
-        v = np.array([random.randint(0, p-1) for _ in range(n)])
+    # Get basis for ker(N^k)
+    ker_k = _kernel_basis(N_pows[k], p) if k < len(N_pows) else [np.eye(n, dtype=int)[i] for i in range(n)]
+    
+    # Try linear combinations of kernel basis vectors
+    def try_vector(v):
         if not np.any(v % p):
-            continue
-        if k < len(N_pows) and np.any(mat_vec(N_pows[k], v, p)):
-            continue
+            return False
         if k > 0 and not np.any(mat_vec(N_pows[k-1], v, p)):
-            continue
-        chain, cur, ok = [], v.copy(), True
+            return False
+        # Check chain independence
+        chain, cur = [], v.copy()
         for _ in range(k):
             if used and in_span(cur, used + chain, p):
-                ok = False
-                break
+                return False
             chain.append(cur.copy())
             cur = mat_vec(N, cur, p)
-        if ok:
+        return True
+    
+    # Try basis vectors first
+    for v in ker_k:
+        if try_vector(v):
             return v
+    
+    # Try random combinations
+    for _ in range(500):
+        if not ker_k:
+            v = np.array([random.randint(0, p-1) for _ in range(n)])
+        else:
+            coeffs = [random.randint(0, p-1) for _ in ker_k]
+            v = sum(c * b for c, b in zip(coeffs, ker_k)) % p
+        if try_vector(v):
+            return v
+    
     raise ValueError("Could not find cyclic vector")
