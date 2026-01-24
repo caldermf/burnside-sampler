@@ -169,7 +169,7 @@ if __name__ == "__main__":
     from collections import Counter
     import math
     
-    q, n = 5, 4
+    q, n = 97, 4
     print(f"Burnside process on S_{n} with q={q}")
     
     G = precompute_green(n, q)

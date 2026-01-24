@@ -112,13 +112,12 @@ def mat_inv(M: np.ndarray, p: int) -> np.ndarray:
 # These count the number of complete flags fixed by a unipotent element
 # of Jordan type λ. Computed recursively over Q, then evaluated at q.
 # =============================================================================
-# -----------------------------------------------------------------------------
-# Math Helpers
-# -----------------------------------------------------------------------------
 
 @lru_cache(maxsize=None)
-def get_partitions(n: int) -> Tuple[Tuple[int, ...], ...]:
-    if n == 0: return ((),)
+def partitions(n: int) -> Tuple[Tuple[int, ...], ...]:
+    """Generate all partitions of n as tuples in decreasing order."""
+    if n == 0:
+        return ((),)
     result = []
     def generate(remaining, max_part, current):
         if remaining == 0:
@@ -129,141 +128,169 @@ def get_partitions(n: int) -> Tuple[Tuple[int, ...], ...]:
     generate(n, n, [])
     return tuple(result)
 
-def z_lambda(partition: Tuple[int, ...]) -> int:
+
+def z_lambda(partition: Tuple[int, ...]) -> Fraction:
+    """
+    Centralizer size: z_λ = ∏_i (i^{m_i} · m_i!)
+    where m_i = multiplicity of i in λ.
+    """
+    from collections import Counter
     counts = Counter(partition)
-    z = 1
-    for val, mult in counts.items():
-        z *= (val ** mult) * math.factorial(mult)
-    return z
-
-def n_statistic(partition: Tuple[int, ...]) -> int:
-    """Computes n(lambda) = sum (i-1) * lambda_i"""
-    return sum((i * p) for i, p in enumerate(partition))
-
-# -----------------------------------------------------------------------------
-# Polynomial Arithmetic Helper
-# -----------------------------------------------------------------------------
-
-class Poly:
-    """Simple class to handle a_0 + a_1*q + ... + a_n*q^n"""
-    def __init__(self, coeffs: Tuple[Fraction, ...]):
-        self.coeffs = coeffs
-
-    @staticmethod
-    def from_dict(d: dict):
-        if not d: return Poly((Fraction(0),))
-        max_deg = max(d.keys())
-        coeffs = [d.get(i, Fraction(0)) for i in range(max_deg + 1)]
-        return Poly(tuple(coeffs))
-
-    def __add__(self, other):
-        max_len = max(len(self.coeffs), len(other.coeffs))
-        new_coeffs = [Fraction(0)] * max_len
-        for i in range(max_len):
-            if i < len(self.coeffs): new_coeffs[i] += self.coeffs[i]
-            if i < len(other.coeffs): new_coeffs[i] += other.coeffs[i]
-        return Poly(tuple(new_coeffs))
-
-    def __mul__(self, other):
-        if isinstance(other, (int, Fraction)):
-            return Poly(tuple(c * other for c in self.coeffs))
-        
-        new_len = len(self.coeffs) + len(other.coeffs) - 1
-        res = [Fraction(0)] * new_len
-        for i, c1 in enumerate(self.coeffs):
-            for j, c2 in enumerate(other.coeffs):
-                res[i+j] += c1 * c2
-        return Poly(tuple(res))
-
-    def involution(self, n_mu):
-        """Standard involution for Green Polys: q^D * P(1/q)"""
-        # For Green polynomials, the degree D is often n(mu)
-        d = n_mu
-        new_coeffs = {}
-        for i, c in enumerate(self.coeffs):
-            new_coeffs[d - i] = c
-        return Poly.from_dict(new_coeffs)
-
-    def eval(self, q):
-        res = Fraction(0)
-        for i, c in enumerate(self.coeffs):
-            res += c * (q**i)
-        return res
-
-# -----------------------------------------------------------------------------
-# Core Algorithm
-# -----------------------------------------------------------------------------
-
-@lru_cache(maxsize=None)
-def green_poly_X(lam: Tuple[int, ...], mu: Tuple[int, ...]) -> Poly:
-    n_lam, n_mu = sum(lam), sum(mu)
-    if n_lam != n_mu: return Poly((Fraction(0),))
-    
-    # Base Case: Single row lambda
-    if len(lam) <= 1:
-        # X_{(n)}^mu = 1 (Standard normalization)
-        return Poly((Fraction(1),))
-
-    lam_first = lam[0]
-    lam_rest = lam[1:]
-    mu_counts = Counter(mu)
-    counts_list = list(mu_counts.items())
-
-    def get_subpartitions(idx, current_parts):
-        if idx == len(counts_list):
-            yield tuple(sorted(current_parts, reverse=True))
-            return
-        size, mult = counts_list[idx]
-        for take in range(mult + 1):
-            yield from get_subpartitions(idx + 1, current_parts + [size] * take)
-
-    result = Poly((Fraction(0),))
-
-    for tau in get_subpartitions(0, []):
-        tau_counts = Counter(tau)
-        
-        # Binomial product of multiplicities
-        binom_prod = 1
-        for s, m in mu_counts.items():
-            binom_prod *= math.comb(m, tau_counts.get(s, 0))
-        
-        rem_sum = n_lam - lam_first - sum(tau)
-        if rem_sum < 0: continue
-
-        for rho in get_partitions(rem_sum):
-            z_inv = Fraction(1, z_lambda(rho))
-            
-            # Construct (q^p - 1) product
-            prod_poly = Poly((Fraction(1),))
-            for p in rho:
-                # (q^p - 1) = [-1, 0...0, 1]
-                p_poly = Poly.from_dict({0: Fraction(-1), p: Fraction(1)})
-                prod_poly = prod_poly * p_poly
-            
-            # Recursive call
-            X_rec = green_poly_X(lam_rest, tuple(sorted(tau + rho, reverse=True)))
-            
-            term = X_rec * prod_poly * z_inv * binom_prod
-            sign = 1 if len(rho) % 2 == 0 else -1
-            
-            if sign == 1:
-                result = result + term
-            else:
-                result = result + (term * -1)
-
+    result = Fraction(1)
+    factorial = 1
+    for i, m in counts.items():
+        for j in range(1, m + 1):
+            factorial = 1
+            for k in range(1, j + 1):
+                factorial *= k
+        result *= Fraction(i ** m * factorial)
+        factorial = 1
+        for k in range(1, m + 1):
+            factorial *= k
+        result *= Fraction(factorial)
+    # Recompute properly
+    result = Fraction(1)
+    for part, mult in counts.items():
+        result *= part ** mult
+        fact = 1
+        for k in range(1, mult + 1):
+            fact *= k
+        result *= fact
     return result
 
-def green_poly_Q(lam: Tuple[int, ...], mu: Tuple[int, ...]) -> Poly:
-    X = green_poly_X(lam, mu)
-    # The involution is relative to n(mu) = sum (i-1)*mu_i
-    return X.involution(n_statistic(mu))
 
-def green_polynomial_value(lam_parts: Tuple[int, ...], q: int) -> int:
-    lam = tuple(sorted(lam_parts, reverse=True))
-    n = sum(lam)
-    mu = (1,) * n
-    poly = green_poly_Q(lam, mu)
-    return int(poly.eval(q))
+@lru_cache(maxsize=None)
+def green_poly_X(lam: Tuple[int, ...], mu: Tuple[int, ...]) -> Tuple[Fraction, ...]:
+    """
+    Compute Green polynomial X_λ^μ as coefficient tuple.
+    Returns tuple of coefficients [a_0, a_1, ..., a_d] representing a_0 + a_1*x + ...
+    """
+    n_lam = sum(lam)
+    n_mu = sum(mu)
+    
+    if n_lam != n_mu:
+        return (Fraction(0),)
+    
+    if len(lam) <= 1:
+        return (Fraction(1),)
+    
+    lam_first = lam[0]
+    lam_rest = lam[1:]
+    
+    # Get all sub-partitions of mu
+    from collections import Counter
+    mu_counts = Counter(mu)
+    
+    def subpartitions(counts_items, idx=0, chosen=None):
+        if chosen is None:
+            chosen = []
+        if idx == len(counts_items):
+            parts = []
+            for size, take in chosen:
+                parts.extend([size] * take)
+            yield tuple(sorted(parts, reverse=True))
+            return
+        size, mult = counts_items[idx]
+        for take in range(mult + 1):
+            yield from subpartitions(counts_items, idx + 1, chosen + [(size, take)])
+    
+    counts_list = list(mu_counts.items())
+    
+    result_poly = [Fraction(0)] * (n_lam + 1)
+    
+    for tau in subpartitions(counts_list):
+        tau_counts = Counter(tau)
+        
+        # Binomial product
+        binom_prod = Fraction(1)
+        for s, m in mu_counts.items():
+            t = tau_counts.get(s, 0)
+            # Compute binomial(m, t)
+            if t > m:
+                binom_prod = Fraction(0)
+                break
+            num = 1
+            for i in range(t):
+                num *= (m - i)
+            den = 1
+            for i in range(1, t + 1):
+                den *= i
+            binom_prod *= Fraction(num, den)
+        
+        if binom_prod == 0:
+            continue
+        
+        remaining_sum = n_lam - lam_first - sum(tau)
+        
+        for rho in partitions(remaining_sum):
+            # Compute z_inverse(rho) * X(lam_rest, tau + rho)
+            concat = tuple(sorted(tau + rho, reverse=True))
+            
+            # z_inverse polynomial: (1/z_rho) * prod_{p in rho} (x^p - 1)
+            z_rho = z_lambda(rho)
+            
+            # Product polynomial for (x^p - 1) terms
+            prod_poly = [Fraction(1)]
+            for p in rho:
+                # Multiply by (x^p - 1)
+                new_poly = [Fraction(0)] * (len(prod_poly) + p)
+                for i, c in enumerate(prod_poly):
+                    new_poly[i] -= c
+                    new_poly[i + p] += c
+                prod_poly = new_poly
+            
+            # Multiply by 1/z_rho
+            prod_poly = [c / z_rho for c in prod_poly]
+            
+            # Get recursive result
+            X_recursive = green_poly_X(lam_rest, concat)
+            
+            # Multiply polynomials
+            term_poly = [Fraction(0)] * (len(prod_poly) + len(X_recursive) - 1)
+            for i, c1 in enumerate(prod_poly):
+                for j, c2 in enumerate(X_recursive):
+                    term_poly[i + j] += c1 * c2
+            
+            # Multiply by binom_prod
+            term_poly = [c * binom_prod for c in term_poly]
+            
+            # Sign: (-1)^{len(rho)}
+            sign = 1 if len(rho) % 2 == 0 else -1
+            
+            # Add to result
+            while len(result_poly) < len(term_poly):
+                result_poly.append(Fraction(0))
+            for i, c in enumerate(term_poly):
+                result_poly[i] += sign * c
+    
+    # Trim trailing zeros
+    while len(result_poly) > 1 and result_poly[-1] == 0:
+        result_poly.pop()
+    
+    return tuple(result_poly)
+
+
+def green_poly_Q(lam: Tuple[int, ...], mu: Tuple[int, ...]) -> Tuple[Fraction, ...]:
+    """
+    Compute Green polynomial Q_λ^μ = involution of X_λ^μ.
+    Involution: if X = a_0 + a_1*x + ... + a_d*x^d, then Q = a_d + a_{d-1}*x + ... + a_0*x^d
+    """
+    X = green_poly_X(lam, mu)
+    return tuple(reversed(X))
+
+
+def green_polynomial_value(partition: Tuple[int, ...], q: int) -> int:
+    """
+    Compute Q_{(1^n)}^λ(q) - the number of flags fixed by a unipotent of type λ.
+    """
+    n = sum(partition)
+    mu = tuple([1] * n)  # (1, 1, ..., 1)
+    Q_coeffs = green_poly_Q(partition, mu)
+    # Evaluate polynomial at q
+    result = Fraction(0)
+    for i, c in enumerate(Q_coeffs):
+        result += c * (q ** i)
+    return int(result)
 
 
 # =============================================================================
