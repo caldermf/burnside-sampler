@@ -3,16 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Burnside Sampler</title>
+    <title>Burnside Process Sampler</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
-        <p class="eyebrow">Burnside Process / Symmetric Group / Prime Fields</p>
-        <h1>Burnside Sampler</h1>
+        <h1>Burnside Sampler on the Symmetric Group</h1>
         <p class="lede">
-          Verified browser-local sampling over prime fields, with no backend and no mathematical shortcuts.
+          An interactive implementation of the sampling algorithm in <a class="lede" href="https://arxiv.org/abs/2510.02285">"Markov chains on Weyl groups from the geometry of the flag variety."</a> Adjust the field characteristic and starting element. By the results of our paper, choosing a large characteristic gives Steinberg cell clusters, while a small one gives near-uniform randomness!
         </p>
       </header>
 
@@ -20,12 +19,11 @@
         <section class="card controls-card">
           <div class="card-head">
             <h2>Controls</h2>
-            <p class="card-note">Worker-backed, browser-local simulation</p>
           </div>
 
           <form id="controls" class="controls-grid">
             <label>
-              <span>Prime q</span>
+              <span>Prime characteristic</span>
               <div class="slider-shell">
                 <input id="prime-slider" name="q" type="range" min="0" max="0" step="1" value="0">
                 <strong id="prime-display" class="slider-value mono">101</strong>
@@ -57,7 +55,7 @@
             <button id="initialize-button" class="button button-primary" type="button">Initialize</button>
             <button id="run-button" class="button" type="button">Run batch</button>
             <button id="step-button" class="button" type="button">Step once</button>
-            <button id="reset-button" class="button button-ghost" type="button">Reset identity</button>
+            <button id="reset-button" class="button button-ghost" type="button">Reset to identity</button>
           </div>
 
           <div class="status-row">
