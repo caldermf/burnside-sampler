@@ -40,6 +40,8 @@ Then open:
 http://localhost:8000/web/index.html
 ```
 
+For GitHub Pages, the repository root also includes a small redirecting `index.html`, so the project site can open directly from the repository URL.
+
 The browser UI:
 
 - simulates the Burnside chain locally
