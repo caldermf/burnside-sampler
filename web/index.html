@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Burnside Sampler</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">Burnside Process / Symmetric Group / Prime Fields</p>
+        <h1>Burnside Sampler</h1>
+        <p class="lede">
+          A static, client-side visualizer built on the verified prime-field sampler.
+          No backend, no hidden state, and no hand-wavy math shortcuts.
+        </p>
+      </header>
+
+      <main class="layout">
+        <section class="card controls-card">
+          <div class="card-head">
+            <h2>Controls</h2>
+            <p class="card-note">Worker-backed, browser-local simulation</p>
+          </div>
+
+          <form id="controls" class="controls-grid">
+            <label>
+              <span>Prime q</span>
+              <input id="prime-q" name="q" type="number" min="2" max="97" step="1" value="5">
+            </label>
+
+            <label>
+              <span>n</span>
+              <input id="dimension-n" name="n" type="number" min="2" max="7" step="1" value="4">
+            </label>
+
+            <label>
+              <span>Steps</span>
+              <input id="step-count" name="steps" type="number" min="1" max="5000" step="1" value="200">
+            </label>
+
+            <label>
+              <span>Seed</span>
+              <input id="seed" name="seed" type="number" step="1" value="20260329">
+            </label>
+
+            <label class="wide">
+              <span>Start permutation</span>
+              <input id="start-state" name="start" type="text" value="1 2 3 4" spellcheck="false">
+            </label>
+          </form>
+
+          <div class="button-row">
+            <button id="initialize-button" class="button button-primary" type="button">Initialize</button>
+            <button id="run-button" class="button" type="button">Run batch</button>
+            <button id="step-button" class="button" type="button">Step once</button>
+            <button id="reset-button" class="button button-ghost" type="button">Reset identity</button>
+          </div>
+
+          <div class="status-row">
+            <span class="status-label">Status</span>
+            <span id="status-text" class="status-text">Loading Pyodide worker…</span>
+          </div>
+        </section>
+
+        <section class="card metrics-card">
+          <div class="metric-grid">
+            <div class="metric">
+              <span class="metric-label">Current state</span>
+              <strong id="metric-current" class="metric-value mono">[loading]</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Visited states</span>
+              <strong id="metric-visited" class="metric-value mono">0 / 0</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Total recorded steps</span>
+              <strong id="metric-steps" class="metric-value mono">0</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Most visited</span>
+              <strong id="metric-mode" class="metric-value mono">-</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="card chart-card">
+          <div class="card-head">
+            <h2>Visit distribution</h2>
+            <p class="card-note">Top visited permutations in the current run</p>
+          </div>
+          <canvas id="distribution-chart" width="960" height="420" aria-label="Visit distribution chart"></canvas>
+        </section>
+
+        <section class="card list-card">
+          <div class="card-head">
+            <h2>Recent trajectory</h2>
+            <p class="card-note">Most recent states in the Markov chain</p>
+          </div>
+          <div id="history-strip" class="history-strip"></div>
+        </section>
+
+        <section class="card list-card">
+          <div class="card-head">
+            <h2>Top states</h2>
+            <p class="card-note">Permutation frequencies in descending order</p>
+          </div>
+          <div id="top-states" class="table-shell"></div>
+        </section>
+
+        <section class="card detail-card">
+          <div class="card-head">
+            <h2>Latest sampled stabilizer</h2>
+            <p class="card-note">Upper-unitriangular element chosen at the current step</p>
+          </div>
+          <pre id="matrix-view" class="matrix-view">No step sampled yet.</pre>
+        </section>
+
+        <section class="card detail-card">
+          <div class="card-head">
+            <h2>Springer trace</h2>
+            <p class="card-note">Recursive quotient data for the latest step</p>
+          </div>
+          <div id="trace-view" class="trace-view"></div>
+        </section>
+
+        <section class="card prose-card">
+          <div class="card-head">
+            <h2>Method</h2>
+            <p class="card-note">Verified path from notebook oracle to browser</p>
+          </div>
+          <p>
+            The browser worker runs the prime-field Python implementation directly through Pyodide.
+            The underlying sampler was tested against the Sage notebook oracle and against brute-force
+            fixed-flag counts on small cases before being wired into this interface.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
