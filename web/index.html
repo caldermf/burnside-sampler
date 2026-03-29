@@ -12,8 +12,7 @@
         <p class="eyebrow">Burnside Process / Symmetric Group / Prime Fields</p>
         <h1>Burnside Sampler</h1>
         <p class="lede">
-          A static, client-side visualizer built on the verified prime-field sampler.
-          No backend, no hidden state, and no hand-wavy math shortcuts.
+          Verified browser-local sampling over prime fields, with no backend and no mathematical shortcuts.
         </p>
       </header>
 
@@ -27,7 +26,10 @@
           <form id="controls" class="controls-grid">
             <label>
               <span>Prime q</span>
-              <input id="prime-q" name="q" type="number" min="2" max="97" step="1" value="5">
+              <div class="slider-shell">
+                <input id="prime-slider" name="q" type="range" min="0" max="0" step="1" value="0">
+                <strong id="prime-display" class="slider-value mono">101</strong>
+              </div>
             </label>
 
             <label>
@@ -64,31 +66,10 @@
           </div>
         </section>
 
-        <section class="card metrics-card">
-          <div class="metric-grid">
-            <div class="metric">
-              <span class="metric-label">Current state</span>
-              <strong id="metric-current" class="metric-value mono">[loading]</strong>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Visited states</span>
-              <strong id="metric-visited" class="metric-value mono">0 / 0</strong>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Total recorded steps</span>
-              <strong id="metric-steps" class="metric-value mono">0</strong>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Most visited</span>
-              <strong id="metric-mode" class="metric-value mono">-</strong>
-            </div>
-          </div>
-        </section>
-
         <section class="card chart-card">
           <div class="card-head">
-            <h2>Visit distribution</h2>
-            <p class="card-note">Top visited permutations in the current run</p>
+            <h2>Permutation-State Histogram</h2>
+            <p class="card-note">Lexicographic order on S_n; same color means same right Steinberg cell, via the RSK insertion tableau P</p>
           </div>
           <canvas id="distribution-chart" width="960" height="420" aria-label="Visit distribution chart"></canvas>
         </section>
@@ -107,34 +88,6 @@
             <p class="card-note">Permutation frequencies in descending order</p>
           </div>
           <div id="top-states" class="table-shell"></div>
-        </section>
-
-        <section class="card detail-card">
-          <div class="card-head">
-            <h2>Latest sampled stabilizer</h2>
-            <p class="card-note">Upper-unitriangular element chosen at the current step</p>
-          </div>
-          <pre id="matrix-view" class="matrix-view">No step sampled yet.</pre>
-        </section>
-
-        <section class="card detail-card">
-          <div class="card-head">
-            <h2>Springer trace</h2>
-            <p class="card-note">Recursive quotient data for the latest step</p>
-          </div>
-          <div id="trace-view" class="trace-view"></div>
-        </section>
-
-        <section class="card prose-card">
-          <div class="card-head">
-            <h2>Method</h2>
-            <p class="card-note">Verified path from notebook oracle to browser</p>
-          </div>
-          <p>
-            The browser worker runs the prime-field Python implementation directly through Pyodide.
-            The underlying sampler was tested against the Sage notebook oracle and against brute-force
-            fixed-flag counts on small cases before being wired into this interface.
-          </p>
         </section>
       </main>
     </div>

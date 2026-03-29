@@ -34,7 +34,7 @@ import itertools
 import math
 import random
 
-from burnside_sampler.pure_python import PrimeFieldBurnsideSampler
+from burnside_sampler.pure_python import PrimeFieldBurnsideSampler, right_steinberg_cell_key
 
 
 class BrowserSession:
@@ -45,16 +45,11 @@ class BrowserSession:
         self.sampler = PrimeFieldBurnsideSampler(self.q)
         self.rng = random.Random(self.seed)
         self.all_states = list(itertools.permutations(range(1, self.n + 1)))
+        self.cell_keys = {state: right_steinberg_cell_key(state) for state in self.all_states}
         self._identity = tuple(range(1, self.n + 1))
         self.current = tuple(start) if start is not None else self._identity
         self.history = [self.current]
         self.counts = {state: 0 for state in self.all_states}
-        self.counts[self.current] = 1
-        self.last_details = None
-
-    def _mode(self):
-        state, count = max(self.counts.items(), key=lambda item: (item[1], item[0]))
-        return {"permutation": list(state), "count": count}
 
     def _top_states(self, limit=24):
         ranked = sorted(self.counts.items(), key=lambda item: (-item[1], item[0]))
@@ -67,44 +62,8 @@ class BrowserSession:
     def _recent_history(self, limit=16):
         return [list(state) for state in self.history[-limit:]]
 
-    def _serialize_trace(self, trace):
-        if trace is None:
-            return []
-        serialized = []
-        for entry in trace:
-            weights = [
-                {"partition": list(partition), "weight": int(weight)}
-                for partition, weight in sorted(
-                    entry["smaller_weights"].items(),
-                    key=lambda item: (-item[1], item[0]),
-                )
-            ]
-            serialized.append(
-                {
-                    "dimension": entry["dimension"],
-                    "partition": list(entry["partition"]),
-                    "smallerPartition": list(entry["smaller_partition"]),
-                    "weights": weights,
-                    "firstVector": list(entry["first_vector"]),
-                    "matrix": [list(row) for row in entry["matrix"]],
-                    "quotient": [list(row) for row in entry["quotient"]],
-                }
-            )
-        return serialized
-
-    def _latest(self):
-        if self.last_details is None:
-            return None
-        return {
-            "current": list(self.last_details["current"]),
-            "next": list(self.last_details["next"]),
-            "stabilizer": [list(row) for row in self.last_details["stabilizer"]],
-            "flag": [list(vector) for vector in self.last_details["flag"]],
-            "trace": self._serialize_trace(self.last_details["trace"]),
-        }
-
-    def snapshot(self):
-        return {
+    def snapshot(self, include_metadata=False):
+        data = {
             "q": self.q,
             "n": self.n,
             "seed": self.seed,
@@ -112,15 +71,16 @@ class BrowserSession:
             "steps": len(self.history) - 1,
             "visited": sum(1 for count in self.counts.values() if count > 0),
             "totalStates": math.factorial(self.n),
-            "mode": self._mode(),
+            "histogramCounts": [self.counts[state] for state in self.all_states],
             "topStates": self._top_states(),
             "history": self._recent_history(),
-            "latest": self._latest(),
         }
+        if include_metadata:
+            data["cellKeys"] = [self.cell_keys[state] for state in self.all_states]
+        return data
 
     def step(self):
-        self.last_details = self.sampler.next_step_with_details(self.current, self.rng)
-        self.current = tuple(self.last_details["next"])
+        self.current = tuple(self.sampler.next_step(self.current, self.rng))
         self.history.append(self.current)
         self.counts[self.current] += 1
         return self.snapshot()
@@ -137,8 +97,6 @@ class BrowserSession:
         self.current = tuple(start) if start is not None else self._identity
         self.history = [self.current]
         self.counts = {state: 0 for state in self.all_states}
-        self.counts[self.current] = 1
-        self.last_details = None
         return self.snapshot()
 
 
@@ -148,7 +106,7 @@ SESSION = None
 def create_session(q, n, start=None, seed=None):
     global SESSION
     SESSION = BrowserSession(q, n, start, seed)
-    return SESSION.snapshot()
+    return SESSION.snapshot(include_metadata=True)
 
 
 def step_session():

@@ -20,6 +20,34 @@ Vector = Tuple[int, ...]
 Matrix = Tuple[Tuple[int, ...], ...]
 
 
+def rsk_insertion_tableau(permutation: Sequence[int]) -> Tuple[Tuple[int, ...], ...]:
+    """Return the RSK insertion tableau ``P`` of a permutation."""
+    tableau: List[List[int]] = []
+    for raw_value in permutation:
+        carried = int(raw_value)
+        inserted = False
+        for row in tableau:
+            bump_index = next((index for index, value in enumerate(row) if value > carried), None)
+            if bump_index is None:
+                row.append(carried)
+                inserted = True
+                break
+            row[bump_index], carried = carried, row[bump_index]
+        if not inserted:
+            tableau.append([carried])
+    return tuple(tuple(row) for row in tableau)
+
+
+def tableau_key(tableau: Sequence[Sequence[int]]) -> str:
+    """Serialize a tableau into a stable key suitable for UI metadata."""
+    return "|".join(",".join(str(int(value)) for value in row) for row in tableau)
+
+
+def right_steinberg_cell_key(permutation: Sequence[int]) -> str:
+    """Return the right-cell key determined by the RSK insertion tableau ``P``."""
+    return tableau_key(rsk_insertion_tableau(permutation))
+
+
 def is_prime(n: int) -> bool:
     """Return whether ``n`` is prime."""
     if n < 2:
