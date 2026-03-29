@@ -17,3 +17,18 @@ That runs:
 
 - the pure-Python correctness tests under `python`
 - the oracle-alignment tests under `sage -python`
+
+The static browser app lives in [`web/index.html`](/Users/caldermf/projects/burnside-sampler/web/index.html).
+Serve the repo root and open `/web/index.html`:
+
+```sh
+./serve_web.sh
+```
+
+Then visit:
+
+```txt
+http://localhost:8000/web/index.html
+```
+
+The frontend runs entirely in the browser through Pyodide in a web worker and uses the verified prime-field sampler from [`burnside_sampler/pure_python.py`](/Users/caldermf/projects/burnside-sampler/burnside_sampler/pure_python.py).
